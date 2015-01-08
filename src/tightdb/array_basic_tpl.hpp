@@ -102,6 +102,7 @@ inline void BasicArray<T>::add(T value)
 
 template<class T> inline T BasicArray<T>::get(std::size_t ndx) const TIGHTDB_NOEXCEPT
 {
+    TIGHTDB_ASSERT_DEBUG(ndx < m_size);
     return *(reinterpret_cast<const T*>(m_data) + ndx);
 }
 
@@ -109,6 +110,8 @@ template<class T> inline T BasicArray<T>::get(std::size_t ndx) const TIGHTDB_NOE
 template<class T>
 inline T BasicArray<T>::get(const char* header, std::size_t ndx) TIGHTDB_NOEXCEPT
 {
+    TIGHTDB_ASSERT_DEBUG(ndx < get_size_from_header(header));
+
     const char* data = get_data_from_header(header);
     // FIXME: This casting assumes that T can be aliged on an 8-bype
     // boundary (since data is aligned on an 8-byte boundary.) This

@@ -831,6 +831,82 @@ TEST(LinkList_MultiLinkQuery)
     CHECK_EQUAL(0, tv.size());
 }
 
+TEST(Link_LinkComparisons)
+{
+    Group group;
+
+    TableRef data_table = group.add_table("data_table");
+    data_table->add_column(type_Float, "float1");
+    data_table->add_column(type_Float, "float2");
+
+    data_table->insert_float(0, 0, 10);
+    data_table->insert_float(1, 0, 11);
+    data_table->insert_done();
+    data_table->insert_float(0, 1, 20);
+    data_table->insert_float(1, 1, 20);
+    data_table->insert_done();
+
+    TableRef link_table = group.add_table("link_table");
+    link_table->add_column(type_Float, "float");
+    link_table->add_column_link(type_Link, "link", *data_table);
+    link_table->add_column_link(type_LinkList, "linklist", *data_table);
+
+    // offset the row indices used in each table so that querying the wrong
+    // table can't return a correct result by coincidence
+    link_table->add_empty_row(6);
+
+    link_table->set_float(0, 2, 10);
+    link_table->set_link(1, 2, 0);
+    link_table->set_float(0, 3, 20);
+    link_table->set_link(1, 3, 1);
+
+    link_table->set_float(0, 4, 10);
+    link_table->set_link(1, 4, 0);
+    link_table->get_linklist(2, 4)->add(0);
+    link_table->set_float(0, 5, 20);
+    link_table->get_linklist(2, 5)->add(1);
+
+    // col == link->col
+    size_t m = (link_table->column<Float>(0) == link_table->link(1).column<Float>(0)).find();
+    CHECK_EQUAL(2, m);
+    m = (link_table->column<Float>(0) == link_table->link(1).column<Float>(1)).find();
+    CHECK_EQUAL(3, m);
+
+    // link->col == col
+    m = (link_table->link(1).column<Float>(0) == link_table->column<Float>(0)).find();
+    CHECK_EQUAL(2, m);
+    m = (link_table->link(1).column<Float>(1) == link_table->column<Float>(0)).find();
+    CHECK_EQUAL(3, m);
+
+    // link->col == link->col
+    m = (link_table->link(1).column<Float>(0) == link_table->link(1).column<Float>(1)).find();
+    CHECK_EQUAL(3, m);
+
+    // col == link_list->col
+    m = (link_table->column<Float>(0) == link_table->link(2).column<Float>(0)).find();
+    CHECK_EQUAL(4, m);
+    m = (link_table->column<Float>(0) == link_table->link(2).column<Float>(1)).find();
+    CHECK_EQUAL(5, m);
+
+    // link_list->col == col
+    m = (link_table->link(2).column<Float>(0) == link_table->column<Float>(0)).find();
+    CHECK_EQUAL(4, m);
+    m = (link_table->link(2).column<Float>(1) == link_table->column<Float>(0)).find();
+    CHECK_EQUAL(5, m);
+
+    // link_list->col == link->col
+    m = (link_table->link(2).column<Float>(0) == link_table->link(1).column<Float>(0)).find();
+    CHECK_EQUAL(4, m);
+    m = (link_table->link(2).column<Float>(1) == link_table->link(1).column<Float>(0)).find();
+    CHECK_EQUAL(not_found, m);
+
+    // link->col == linklist->col
+    m = (link_table->link(1).column<Float>(0) == link_table->link(2).column<Float>(0)).find();
+    CHECK_EQUAL(4, m);
+    m = (link_table->link(1).column<Float>(0) == link_table->link(2).column<Float>(1)).find();
+    CHECK_EQUAL(not_found, m);
+}
+
 
 TEST(LinkList_SortLinkView)
 {
@@ -1290,6 +1366,38 @@ TEST(LinkList_QueryOnLinkList)
     }
     query2.find_all();
     query2.find();
+}
+
+TEST(Link_LinkedColumnComparison)
+{
+    Group group;
+
+    TableRef table1 = group.add_table("table1");
+    table1->add_column(type_Int, "col1");
+    table1->add_column(type_Int, "col2");
+
+    // add some rows
+    table1->add_empty_row();
+    table1->set_int(0, 0, 100);
+    table1->set_int(1, 0, 200);
+    table1->add_empty_row();
+    table1->set_int(0, 1, 200);
+    table1->set_int(1, 1, 200);
+
+    TableRef table2 = group.add_table("table2");
+    table2->add_column(type_Int, "col1");
+    table2->add_column(type_Int, "col2");
+    size_t col_link = table2->add_column_link(type_Link, "link", *table1);
+
+    table2->add_empty_row();
+    table2->add_empty_row();
+    table2->set_link(col_link, 0, 0);
+    table2->set_link(col_link, 1, 1);
+
+    Query q = table2->link(col_link).column<Int>(0) == table2->link(col_link).column<Int>(1);
+    TableView tv = q.find_all();
+    CHECK_EQUAL(tv.size(), 1);
+    CHECK_EQUAL(tv[0].get_index(), 1);
 }
 
 #endif

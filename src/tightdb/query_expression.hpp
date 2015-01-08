@@ -259,7 +259,7 @@ struct ValueBase
 
     // If true, all values in the class come from a link of a single field in the parent table (m_table). If
     // false, then values come from successive rows of m_table (query operations are operated on in bulks for speed)
-    bool from_link;
+    bool from_link_list;
 
     // Number of values stored in the class.
     size_t m_values;
@@ -468,7 +468,9 @@ public:
         const Columns<R>* right_col = dynamic_cast<const Columns<R>*>(&right);
 
         // query_engine supports 'T-column <op> <T-column>' for T = {int64_t, float, double}, op = {<, >, ==, !=, <=, >=}
-        if (left_col && right_col && util::SameType<L, R>::value) {
+        if (left_col && right_col && util::SameType<L, R>::value &&
+            left_col->m_link_map.m_tables.empty() && right_col->m_link_map.m_tables.empty()) {
+
             const Table* t = (const_cast<Columns<R>*>(left_col))->get_table();
             Query q = Query(*t);
 
@@ -620,7 +622,7 @@ public:
                 delete[] m_v;
             m_v = null_ptr;
         }
-        ValueBase::from_link = link;
+        ValueBase::from_link_list = link;
         ValueBase::m_values = values;
         if (m_values > 0) {
             // If we store more than default_size elements then use 'new', else use m_cache
@@ -662,7 +664,7 @@ public:
         typedef typename EitherIsString <D, T>::type dst_t;
         typedef typename EitherIsString <T, D>::type src_t;
         Value<dst_t>& d = static_cast<Value<dst_t>&>(destination);
-        d.init(ValueBase::from_link, ValueBase::m_values, 0);
+        d.init(ValueBase::from_link_list, ValueBase::m_values, 0);
         for (size_t t = 0; t < ValueBase::m_values; t++) {
             src_t* source = reinterpret_cast<src_t*>(m_v);
             d.m_v[t] = static_cast<dst_t>(source[t]);
@@ -721,7 +723,7 @@ public:
     {
         TCond c;
 
-        if (!left->from_link && !right->from_link) {
+        if (!left->from_link_list && !right->from_link_list) {
             // Compare values one-by-one (one value is one row; no links)
             size_t min = minimum(left->ValueBase::m_values, right->ValueBase::m_values);
             for (size_t m = 0; m < min; m++) {
@@ -729,22 +731,20 @@ public:
                     return m;
             }
         }
-        else if (left->from_link && right->from_link) {
+        else if (left->from_link_list && right->from_link_list) {
             // Many-to-many links not supported yet. Need to specify behaviour
             TIGHTDB_ASSERT_DEBUG(false);
         }
-        else if (!left->from_link && right->from_link) {
-            // Right values come from link. Left must come from single row. Semantics: Match if at least 1 
-            // linked-to-value fulfills the condition
-            TIGHTDB_ASSERT_DEBUG(left->m_values == 0 || left->m_values == ValueBase::default_size);
+        else if (!left->from_link_list && right->from_link_list) {
+            // Right values come from linklist. Left must come from single row.
+            // Semantics: Match if at least 1 linked-to-value fulfills the condition
             for (size_t r = 0; r < right->ValueBase::m_values; r++) {
                 if (c(left->m_v[0], right->m_v[r]))
                     return 0;
             }
         }
-        else if (left->from_link && !right->from_link) {
-            // Same as above, right left values coming from links
-            TIGHTDB_ASSERT_DEBUG(right->m_values == 0 || right->m_values == ValueBase::default_size);
+        else if (left->from_link_list && !right->from_link_list) {
+            // Same as above, left values coming from linklist
             for (size_t l = 0; l < left->ValueBase::m_values; l++) {
                 if (c(left->m_v[l], right->m_v[0]))
                     return 0;
@@ -971,6 +971,7 @@ public:
 
     void init(Table* table, std::vector<size_t> columns)
     {
+        m_from_link_list = false;
         for (size_t t = 0; t < columns.size(); t++) {
             // Link column can be either LinkList or single Link
             ColumnType type = table->get_real_column_type(columns[t]);
@@ -980,6 +981,7 @@ public:
                 m_link_columns.push_back(&(table->get_column_link_list(columns[t])));
                 m_link_types.push_back(tightdb::type_LinkList);
                 table = &cll.get_target_table();
+                m_from_link_list = true;
             }
             else {
                 ColumnLink& cl = table->get_column_link(columns[t]);
@@ -1007,6 +1009,7 @@ public:
     const Table* m_table;
     std::vector<ColumnLinkBase*> m_link_columns;
     std::vector<Table*> m_tables;
+    bool m_from_link_list;
 
 private:
     void map_links(size_t column, size_t row, LinkMapFunction& lm)
@@ -1395,7 +1398,7 @@ public:
             // LinkList with more than 0 values. Create Value with payload for all fields
 
             std::vector<size_t> links = m_link_map.get_links(index);
-            Value<T> v(true, links.size());
+            Value<T> v(m_link_map.m_from_link_list, links.size());
 
             for (size_t t = 0; t < links.size(); t++) {
                 size_t link_to = links[t];
@@ -1597,20 +1600,24 @@ public:
 
     size_t find_first(size_t start, size_t end) const
     {
-        size_t match;
         Value<T> right;
         Value<T> left;
 
         for (; start < end;) {
             m_left.evaluate(start, left);
             m_right.evaluate(start, right);
-            match = Value<T>::template compare<TCond>(&left, &right);
 
+            // if either side is an empty linklist just move on to the next row
+            if (left.m_values == 0 || right.m_values == 0) {
+                start += 1;
+                continue;
+            }
+
+            size_t match = Value<T>::template compare<TCond>(&left, &right);
             if (match != not_found && match + start < end)
                 return start + match;
 
-            size_t rows = (left.from_link || right.from_link) ? 1 : minimum(right.m_values, left.m_values);
-            start += rows;
+            start += (left.from_link_list || right.from_link_list) ? 1 : minimum(right.m_values, left.m_values);
         }
 
         return not_found; // no match
