@@ -51,6 +51,11 @@
 #include <sys/stat.h>
 #include <semaphore.h>
 
+#include <notify.h>
+#ifndef NOTIFY_TOKEN_INVALID
+#define NOTIFY_TOKEN_INVALID -1
+#endif
+
 namespace tightdb {
 namespace util {
 
@@ -301,8 +306,6 @@ public:
 
 #ifdef TIGHTDB_CONDVAR_EMULATION
     struct SharedPart {
-        uint64_t signal_counter;
-        uint32_t waiters;
     };
 #else
     struct SharedPart {
@@ -344,14 +347,14 @@ private:
     TIGHTDB_NORETURN static void init_failed(int);
     TIGHTDB_NORETURN static void attr_init_failed(int);
     TIGHTDB_NORETURN static void destroy_failed(int) TIGHTDB_NOEXCEPT;
-    sem_t* get_semaphore();
     void handle_wait_error(int error);
 
     // non-zero if a shared part has been registered (always 0 on process local instances)
     SharedPart* m_shared_part; 
 
-    // semaphore used for emulation, zero if emulation is not used
-    sem_t* m_sem; 
+    int m_notify_token;
+    int m_notify_fd;
+    UniquePtr<char[]> m_name;
 
     // posix condition variable used for implementation, non-zero if process local. 
     // always set during construction. Note: in process shared scenario without emulation,
@@ -359,10 +362,6 @@ private:
     // in the process shared scenario, m_cond is 0 at all times.
     pthread_cond_t* m_cond; 
     bool is_process_shared() { return m_cond == 0; }
-
-    // name of the semaphore - FIXME: generate a name based on inode, device and offset of
-    // the file used for memory mapping.
-    static const char* m_name;
 };
 
 
@@ -563,7 +562,8 @@ inline void RobustMutex::unlock() TIGHTDB_NOEXCEPT
 
 inline CondVar::CondVar()
 {
-    m_sem = 0;
+    m_notify_token = NOTIFY_TOKEN_INVALID;
+    m_notify_fd = 0;
     m_shared_part = 0;
     m_cond = new pthread_cond_t;
     int r = pthread_cond_init(m_cond, 0);
@@ -573,9 +573,11 @@ inline CondVar::CondVar()
 
 inline void CondVar::close() TIGHTDB_NOEXCEPT
 {
-    if (m_sem) { // true if emulating a process shared condvar
-        sem_close(m_sem);
-        m_sem = 0;
+    if (m_notify_token) { // true if emulating a process shared condvar
+        notify_cancel(m_notify_token); // closes fd
+         // FIXME check error
+        m_notify_token = NOTIFY_TOKEN_INVALID;
+        m_notify_fd = 0;
         return; // we don't need to clean up the SharedPart
     }
     // we don't do anything to the shared part, other CondVars may shared it
@@ -607,38 +609,31 @@ inline void CondVar::set_shared_part(SharedPart& shared_part, dev_t device, ino_
     static_cast<void>(inode);
     static_cast<void>(offset_of_condvar);
 #ifdef TIGHTDB_CONDVAR_EMULATION
-    m_sem = get_semaphore();
+    std::stringstream ss;
+    ss << "group.io.realm.example.extension"; // FIXME: either needs to come from user or magic from file path
+    ss << ".realm-cond-var." << device << "-" << inode << "-" << offset_of_condvar;
+    std::string str = ss.str();
+    m_name.reset(new char[str.size() + 1]);
+    memcpy(m_name.get(), str.c_str(), str.size() + 1);
+    uint32_t err = notify_register_file_descriptor(m_name.get(), &m_notify_fd, 0, &m_notify_token);
+    TIGHTDB_ASSERT(err == NOTIFY_STATUS_OK);
+    static_cast<void>(err);
 #endif
-}
-
-inline sem_t* CondVar::get_semaphore()
-{
-    TIGHTDB_ASSERT(m_name);
-    TIGHTDB_ASSERT(m_shared_part);
-    if (m_sem == 0) {
-        m_sem = sem_open(m_name, O_CREAT, S_IRWXG | S_IRWXU, 0);
-        // FIXME: error checking
-    }
-    return m_sem;
 }
 
 inline void CondVar::wait(LockGuard& l) TIGHTDB_NOEXCEPT
 {
     pthread_cond_t* cond = m_cond;
 #ifdef TIGHTDB_CONDVAR_EMULATION
-    if (m_sem) {
+    if (m_notify_token != NOTIFY_TOKEN_INVALID) {
         TIGHTDB_ASSERT(m_shared_part);
-        m_shared_part->waiters++;
-        uint64_t my_counter = m_shared_part->signal_counter;
         l.m_mutex.unlock();
         for (;;) {
-            // FIXME: handle premature return due to signal
-            sem_wait(m_sem);
+            int token = 0;
+            read(m_notify_fd, &token, sizeof(token));
             l.m_mutex.lock();
-            if (m_shared_part->signal_counter != my_counter)
+            if (ntohl(token) == static_cast<uint32_t>(m_notify_token))
                 break;
-            sem_post(m_sem);
-            sched_yield();
             l.m_mutex.unlock();
         }
         return;
@@ -664,20 +659,16 @@ inline void CondVar::wait(RobustMutex& m, Func recover_func, const struct timesp
 {
     pthread_cond_t* cond = m_cond;
 #ifdef TIGHTDB_CONDVAR_EMULATION
-    if (m_sem) {
+    if (m_notify_token != NOTIFY_TOKEN_INVALID) {
         TIGHTDB_ASSERT(m_shared_part);
         TIGHTDB_ASSERT(tp == 0);
-        m_shared_part->waiters++;
-        uint64_t my_counter = m_shared_part->signal_counter;
         m.unlock();
         for (;;) {
-            // FIXME: handle premature return due to signal
-            sem_wait(m_sem);
+            int token = 0;
+            read(m_notify_fd, &token, sizeof(token));
             m.lock(recover_func);
-            if (m_shared_part->signal_counter != my_counter)
+            if (ntohl(token) == static_cast<uint32_t>(m_notify_token))
                 break;
-            sem_post(m_sem);
-            sched_yield();
             m.unlock();
         }
         return;
@@ -726,13 +717,8 @@ inline void CondVar::notify() TIGHTDB_NOEXCEPT
 {
     pthread_cond_t* cond = m_cond;
 #ifdef TIGHTDB_CONDVAR_EMULATION
-    if (m_sem) {
-        TIGHTDB_ASSERT(m_shared_part);
-        m_shared_part->signal_counter++;
-        if (m_shared_part->waiters) {
-            sem_post(m_sem);
-            --m_shared_part->waiters;
-        }
+    if (m_notify_token != NOTIFY_TOKEN_INVALID) {
+        TIGHTDB_TERMINATE("not implemented");
         return;
     }
 #else
@@ -752,13 +738,11 @@ inline void CondVar::notify_all() TIGHTDB_NOEXCEPT
 {
     pthread_cond_t* cond = m_cond;
 #ifdef TIGHTDB_CONDVAR_EMULATION
-    if (m_sem) {
+    if (m_notify_token != NOTIFY_TOKEN_INVALID) {
         TIGHTDB_ASSERT(m_shared_part);
-        m_shared_part->signal_counter++;
-        while (m_shared_part->waiters) {
-            sem_post(m_sem);
-            --m_shared_part->waiters;
-        }
+        uint32_t err = notify_post(m_name.get());
+        TIGHTDB_ASSERT(err == NOTIFY_STATUS_OK);
+        static_cast<void>(err);
         return;
     }
 #else

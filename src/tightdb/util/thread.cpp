@@ -201,13 +201,12 @@ void RobustMutex::mark_as_consistent() TIGHTDB_NOEXCEPT
 #endif
 }
 
-const char* CondVar::m_name = "/RealmsBigFriendlySemaphore";
-
 CondVar::CondVar(process_shared_tag)
 {
 #ifdef TIGHTDB_HAVE_PTHREAD_PROCESS_SHARED
     m_shared_part = 0;
-    m_sem = 0;
+    m_notify_token = NOTIFY_TOKEN_INVALID;
+    m_notify_fd = 0;
     m_cond = 0;
 #else // !TIGHTDB_HAVE_PTHREAD_PROCESS_SHARED
     throw runtime_error("No support for process-shared condition variables");
@@ -216,8 +215,7 @@ CondVar::CondVar(process_shared_tag)
 
 void CondVar::init_shared_part(SharedPart& shared_part) {
 #ifdef TIGHTDB_CONDVAR_EMULATION
-    shared_part.waiters = 0;
-    shared_part.signal_counter = 0;
+    static_cast<void>(shared_part);
 #else
     pthread_condattr_t attr;
     int r = pthread_condattr_init(&attr);
