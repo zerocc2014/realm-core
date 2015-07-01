@@ -1520,6 +1520,7 @@ void SharedGroup::low_level_commit(uint_fast64_t new_version)
 {
     SharedInfo* info = m_file_map.get_addr();
     uint_fast64_t readlock_version;
+    std::vector<uint64_t> live_tops;
     {
         SharedInfo* r_info = m_reader_map.get_addr();
 
@@ -1532,6 +1533,14 @@ void SharedGroup::low_level_commit(uint_fast64_t new_version)
         r_info->readers.cleanup();
         const Ringbuffer::ReadCount& r = r_info->readers.get_oldest();
         readlock_version = r.version;
+
+        for (uint_fast32_t i = 0, size = r_info->readers.get_num_entries(); i < size; ++i) {
+            auto const& r = r_info->readers.get(i);
+            auto count = r.count.load();
+            if (count && !(count & 1) && r.current_top)
+                live_tops.push_back(r.current_top);
+        }
+
 #ifdef REALM_ENABLE_REPLICATION
         // If replication is enabled, we need to propagate knowledge of the earliest
         // available version:
@@ -1539,7 +1548,6 @@ void SharedGroup::low_level_commit(uint_fast64_t new_version)
         if (repl)
             repl->set_last_version_seen_locally(readlock_version);
 #endif
-
     }
 
     // Do the actual commit
@@ -1547,7 +1555,7 @@ void SharedGroup::low_level_commit(uint_fast64_t new_version)
     REALM_ASSERT(readlock_version <= new_version);
     // info->readers.dump();
     GroupWriter out(m_group); // Throws
-    out.set_versions(new_version, readlock_version);
+    out.set_versions(new_version, readlock_version, move(live_tops));
     // Recursively write all changed arrays to end of file
     ref_type new_top_ref = out.write_group(); // Throws
     // std::cout << "Writing version " << new_version << ", Topptr " << new_top_ref

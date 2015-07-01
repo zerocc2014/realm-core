@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <iostream>
+#include <unordered_set>
 
 #include <realm/util/safe_int_ops.hpp>
 #include <realm/group_writer.hpp>
@@ -252,6 +253,23 @@ size_t GroupWriter::get_free_space(size_t size)
     return chunk_pos;
 }
 
+static void walk(const Array& array, std::unordered_set<size_t>& reachable)
+{
+    if (!array.has_refs()) return;
+
+    for (size_t i = 0, size = array.size(); i < size; ++i) {
+        int64_t value = array.get(i);
+        if (value == 0 || value % 2 != 0)
+            continue;
+
+        if (!reachable.insert(to_ref(value)).second)
+            continue;
+
+        Array sub(array.get_alloc());
+        sub.init_from_ref(to_ref(value));
+        walk(array, reachable);
+    }
+}
 
 std::pair<size_t, size_t> GroupWriter::reserve_free_space(size_t size)
 {
@@ -268,6 +286,7 @@ std::pair<size_t, size_t> GroupWriter::reserve_free_space(size_t size)
 
     // Do we have a free space we can reuse?
   again:
+    bool any_too_recent = false;
     for (size_t i = begin; i != end; ++i) {
         size_t chunk_size = to_size_t(lengths.get(i));
         if (chunk_size >= size) {
@@ -275,8 +294,11 @@ std::pair<size_t, size_t> GroupWriter::reserve_free_space(size_t size)
             // are allowed to be used.
             if (is_shared) {
                 size_t ver = to_size_t(versions.get(i));
-                if (ver >= m_readlock_version)
+                if (ver >= m_readlock_version) {
+                    if (ver > m_readlock_version)
+                        any_too_recent = true;
                     continue;
+                }
             }
 
             // Match found!
@@ -288,6 +310,32 @@ std::pair<size_t, size_t> GroupWriter::reserve_free_space(size_t size)
         end = begin;
         begin = 0;
         goto again;
+    }
+
+    if (is_shared && m_readlock_version > 0 && any_too_recent && m_live_tops.size()) {
+        std::unordered_set<std::size_t> reachable;
+        for (uint64_t top : m_live_tops) {
+            reachable.insert(top);
+            Array root(m_alloc);
+            root.init_from_ref(top);
+            walk(root, reachable);
+        }
+        m_live_tops.clear();
+
+        ArrayInteger& positions = m_group.m_free_positions;
+
+        bool released_any = false;
+        for (size_t i = 0, size = lengths.size(); i < size; ++i) {
+            if (!reachable.count(positions.get(i))) {
+                versions.set(i, m_readlock_version - 1);
+                released_any = true;
+            }
+        }
+
+        if (released_any) {
+            merge_free_space();
+            return reserve_free_space(size);
+        }
     }
 
     // No free space, so we have to extend the file.

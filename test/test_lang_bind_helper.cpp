@@ -7318,6 +7318,7 @@ TEST(LangBindHelper_ImplicitTransactions_OverSharedGroupDestruction)
         }
     }
 }
+#endif
 
 #endif
 
@@ -8640,6 +8641,7 @@ REALM_TABLE_1(MyTable, first,  Int)
 
 #ifndef _WIN32
 
+#if 0
 TEST(LangBindHelper_VersionControl)
 {
     const int num_versions = 10;

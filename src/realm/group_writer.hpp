@@ -22,6 +22,7 @@
 
 #include <stdint.h> // unint8_t etc
 #include <utility>
+#include <vector>
 
 #include <realm/util/file.hpp>
 #include <realm/alloc.hpp>
@@ -38,7 +39,7 @@ class GroupWriter: public _impl::ArrayWriterBase {
 public:
     GroupWriter(Group&);
 
-    void set_versions(uint64_t current, uint64_t read_lock);
+    void set_versions(uint64_t current, uint64_t read_lock, std::vector<uint64_t> live_tops);
 
     /// Write all changed array nodes into free space.
     ///
@@ -73,6 +74,8 @@ private:
     uint64_t   m_current_version;
     uint64_t   m_readlock_version;
     util::File::Map<char> m_file_map;
+
+    std::vector<uint64_t> m_live_tops;
 
     // Merge adjacent chunks
     void merge_free_space();
@@ -121,11 +124,12 @@ inline std::size_t GroupWriter::get_file_size() const REALM_NOEXCEPT
     return m_file_map.get_size();
 }
 
-inline void GroupWriter::set_versions(uint64_t current, uint64_t read_lock)
+inline void GroupWriter::set_versions(uint64_t current, uint64_t read_lock, std::vector<uint64_t> live_tops)
 {
     REALM_ASSERT(read_lock <= current);
     m_current_version  = current;
     m_readlock_version = read_lock;
+    m_live_tops = move(live_tops);
 }
 
 } // namespace realm

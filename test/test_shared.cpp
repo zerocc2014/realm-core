@@ -1099,6 +1099,31 @@ TEST(Shared_ManyReaders)
     }
 }
 
+TEST(Shared_Expansion)
+{
+    SHARED_GROUP_TEST_PATH(path);
+    SharedGroup sg(path, false, SharedGroup::durability_Full, crypt_key());
+    SharedGroup sg2(path, false, SharedGroup::durability_Full, crypt_key());
+
+    {
+        WriteTransaction wt(sg);
+        wt.add_table("table")->add_column(type_Int, "column");
+        wt.get_table("table")->add_empty_row();
+        wt.commit();
+    }
+
+    ReadTransaction rt(sg);
+
+    for (size_t i = 0; i < 10000; ++i) {
+        WriteTransaction wt(sg2);
+        wt.get_table("table")->set_int(0, 0, 0);
+        wt.commit();
+    }
+
+    File f(path);
+    std::cerr << f.get_size() << '\n';
+}
+
 
 namespace {
 
