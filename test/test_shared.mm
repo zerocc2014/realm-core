@@ -19,9 +19,25 @@
 #include "testsettings.hpp"
 #ifdef TEST_SHARED
 
-#include <streambuf>
+#include <realm.hpp>
+#include <realm/disable_sync_to_disk.hpp>
+#include <realm/history.hpp>
+#include <realm/impl/simulated_failure.hpp>
+#include <realm/util/features.h>
+#include <realm/util/file.hpp>
+#include <realm/util/safe_int_ops.hpp>
+#include <realm/util/terminate.hpp>
+#include <realm/util/thread.hpp>
+#include <realm/util/to_string.hpp>
+
 #include <fstream>
+#include <memory>
+#include <streambuf>
 #include <tuple>
+#include <thread>
+#include <uuid/uuid.h>
+
+#include <Foundation/Foundation.h>
 
 // Need fork() and waitpid() for Shared_RobustAgainstDeathDuringWrite
 #ifndef _WIN32
@@ -36,16 +52,6 @@
 #include <windows.h>
 #endif
 
-#include <realm.hpp>
-#include <realm/util/features.h>
-#include <realm/util/safe_int_ops.hpp>
-#include <memory>
-#include <realm/util/terminate.hpp>
-#include <realm/util/file.hpp>
-#include <realm/util/thread.hpp>
-#include <realm/util/to_string.hpp>
-#include <realm/impl/simulated_failure.hpp>
-
 #include "fuzz_group.hpp"
 
 #include "test.hpp"
@@ -58,6 +64,9 @@ using namespace realm::util;
 using namespace realm::test_util;
 using unit_test::TestContext;
 
+@interface NSFileManager ()
+- (BOOL)createDirectoryAtURL:(NSURL *)url withIntermediateDirectories:(BOOL)createIntermediates attributes:(nullable NSDictionary<NSString *, id> *)attributes error:(NSError **)error;
+@end
 
 // Test independence and thread-safety
 // -----------------------------------
@@ -92,6 +101,76 @@ using unit_test::TestContext;
 TEST(Shared_Unattached)
 {
     SharedGroup sg((SharedGroup::unattached_tag()));
+}
+
+ONLY(Stuff)
+{
+//    disable_sync_to_disk();
+
+    auto fm = NSFileManager.defaultManager;
+    auto container = [fm containerURLForSecurityApplicationGroupIdentifier:@"group.io.realm.test"];
+    NSError *error = nil;
+    [fm createDirectoryAtURL:container withIntermediateDirectories:YES attributes:nil error:&error];
+    CHECK(error == nil);
+
+    std::string path = [container URLByAppendingPathComponent:@"test2.realm"].path.UTF8String;
+
+    {
+        auto hist = make_in_realm_history(path);
+        SharedGroup sg(*hist);
+        WriteTransaction wt(sg);
+        auto table = wt.get_or_add_table("table");
+        if (table->get_column_count() == 0) {
+            table->add_column(type_String, "value1");
+            table->add_column(type_String, "value2");
+        }
+        wt.commit();
+    }
+
+    for (int k = 0; k < 10; ++k) {
+    for (size_t i = 0; i < 100; ++i) {
+        auto hist = make_in_realm_history(path);
+        SharedGroup sg(*hist);
+        WriteTransaction wt(sg);
+        auto table = wt.get_table("table");
+        for (int j = 0; j < 1000; ++j) {
+            auto row = table->add_empty_row();
+            uuid_t uuid;
+            uuid_generate(uuid);
+            table->set_string(0, row, StringData((char *)uuid, sizeof(uuid)));
+            uuid_generate(uuid);
+            table->set_string(1, row, StringData((char *)uuid, sizeof(uuid)));
+        }
+        wt.commit();
+    }
+        sleep(1);
+    }
+
+#if 0
+    std::thread threads[100];
+    std::atomic<int> total{0};
+    int counts[100] = {0};
+    for (size_t i = 0; i < 10; ++i) {
+        threads[i] = std::thread([=, &total, &counts, &path] {
+            auto hist = make_in_realm_history(path);
+            SharedGroup sg(*hist);
+
+            while (total < 100000) {
+                WriteTransaction wt(sg);
+                usleep(100);
+                ++counts[i];
+                ++total;
+                wt.commit();
+            }
+        });
+    }
+    for (size_t i = 0; i < 10; ++i) {
+        threads[i].join();
+    }
+    for (size_t i = 0; i < 10; ++i) {
+        std::cerr << i << " " << counts[i] << "\n";
+    }
+#endif
 }
 
 

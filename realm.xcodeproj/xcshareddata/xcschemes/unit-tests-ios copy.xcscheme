@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "0820"
+   LastUpgradeVersion = "0830"
    version = "1.3">
    <BuildAction
       parallelizeBuildables = "YES"
@@ -14,9 +14,9 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "4142C9391623478700B3B902"
-               BuildableName = "liblibrealm ios.a"
-               BlueprintName = "librealm ios"
+               BlueprintIdentifier = "3FEE5B201E941CD100081DCC"
+               BuildableName = "unit-tests-ios copy.app"
+               BlueprintName = "unit-tests-ios copy"
                ReferencedContainer = "container:realm.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -29,6 +29,15 @@
       shouldUseLaunchSchemeArgsEnv = "YES">
       <Testables>
       </Testables>
+      <MacroExpansion>
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "3FEE5B201E941CD100081DCC"
+            BuildableName = "unit-tests-ios copy.app"
+            BlueprintName = "unit-tests-ios copy"
+            ReferencedContainer = "container:realm.xcodeproj">
+         </BuildableReference>
+      </MacroExpansion>
       <AdditionalOptions>
       </AdditionalOptions>
    </TestAction>
@@ -42,15 +51,16 @@
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
       allowLocationSimulation = "YES">
-      <MacroExpansion>
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "4142C9391623478700B3B902"
-            BuildableName = "liblibrealm ios.a"
-            BlueprintName = "librealm ios"
+            BlueprintIdentifier = "3FEE5B201E941CD100081DCC"
+            BuildableName = "unit-tests-ios copy.app"
+            BlueprintName = "unit-tests-ios copy"
             ReferencedContainer = "container:realm.xcodeproj">
          </BuildableReference>
-      </MacroExpansion>
+      </BuildableProductRunnable>
       <AdditionalOptions>
       </AdditionalOptions>
    </LaunchAction>
@@ -60,15 +70,16 @@
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"
       debugDocumentVersioning = "YES">
-      <MacroExpansion>
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "4142C9391623478700B3B902"
-            BuildableName = "liblibrealm ios.a"
-            BlueprintName = "librealm ios"
+            BlueprintIdentifier = "3FEE5B201E941CD100081DCC"
+            BuildableName = "unit-tests-ios copy.app"
+            BlueprintName = "unit-tests-ios copy"
             ReferencedContainer = "container:realm.xcodeproj">
          </BuildableReference>
-      </MacroExpansion>
+      </BuildableProductRunnable>
    </ProfileAction>
    <AnalyzeAction
       buildConfiguration = "Debug">

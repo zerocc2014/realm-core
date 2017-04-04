@@ -16,16 +16,16 @@
  *
  **************************************************************************/
 
-#include <climits>
-#include <limits>
 #include <algorithm>
-#include <vector>
-
 #include <cerrno>
-#include <cstring>
+#include <climits>
 #include <cstddef>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include <iostream>
+#include <limits>
+#include <vector>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -767,8 +767,11 @@ bool File::lock(bool exclusive, bool non_blocking)
     if (non_blocking)
         operation |= LOCK_NB;
     do {
-        if (flock(m_fd, operation) == 0)
+        std::cerr << "locking\n";
+        if (flock(m_fd, operation) == 0) {
+            std::cerr << "locked\n";
             return true;
+        }
     } while (errno == EINTR);
     int err = errno; // Eliminate any risk of clobbering
     if (err == EWOULDBLOCK)
@@ -805,8 +808,10 @@ void File::unlock() noexcept
     // non-locked file were unlocked.
     int r;
     do {
+        std::cerr << "unlocking\n";
         r = flock(m_fd, LOCK_UN);
     } while (r != 0 && errno == EINTR);
+    std::cerr << "unlocked\n";
     REALM_ASSERT_RELEASE(r == 0);
 
 #endif

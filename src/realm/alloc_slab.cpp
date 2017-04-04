@@ -663,7 +663,7 @@ ref_type SlabAlloc::attach_file(const std::string& file_path, Config& cfg)
     File::CreateMode create = cfg.read_only || cfg.no_create ? File::create_Never : File::create_Auto;
     {
         std::lock_guard<Mutex> lock(all_files_mutex);
-        std::shared_ptr<SlabAlloc::MappedFile> p = all_files[path].lock();
+        std::shared_ptr<SlabAlloc::MappedFile> p;
         // In case we're the session initiator, we'll need a new mapping in any case.
         // NOTE: normally, it should not be possible to find an old mapping while being
         // the session initiator, since by definition the session initiator is the first
@@ -676,7 +676,7 @@ ref_type SlabAlloc::attach_file(const std::string& file_path, Config& cfg)
         // of a shared group.
         if (cfg.session_initiator || !bool(p)) {
             p = std::make_shared<MappedFile>();
-            all_files[path] = p;
+//            all_files[path] = p;
         }
         m_file_mappings = p;
     }
