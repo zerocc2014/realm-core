@@ -6641,7 +6641,7 @@ void Table::print() const
             }
             switch (type) {
                 case col_type_Int: {
-                    size_t value = to_size_t(get_int(n, i));
+                    int_fast64_t value = get_int(n, i);
                     std::cout << std::setw(10) << value << " ";
                     break;
                 }
