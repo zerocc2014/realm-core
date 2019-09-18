@@ -185,6 +185,12 @@ Int ValueExpression::value_of_type_for_query<Int>()
 }
 
 template <>
+Int ValueExpression::value_of_list_type_for_query<Int>()
+{
+    return value_of_type_for_query<Int>();
+}
+
+template <>
 StringData ValueExpression::value_of_type_for_query<StringData>()
 {
     if (value->type == parser::Expression::Type::Argument) {

@@ -34,6 +34,7 @@ struct KeyPathElement {
     ColKey col_key;
     DataType col_type;
     bool is_backlink;
+    bool is_list;
 };
 
 class BacklinksRestrictedError : public std::runtime_error {

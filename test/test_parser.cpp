@@ -1683,6 +1683,103 @@ TEST(Parser_collection_aggregates)
     CHECK_THROW_ANY(verify_query(test_context, courses, "failure_percentage.@size <= 2", 0));
 }
 
+ONLY(Parser_collection_aggregates_on_list_of_primitives)
+{
+    Group g;
+    TableRef t = g.add_table("table");
+    auto int_col = t->add_column_list(type_Int, "integers");
+
+    auto obj0 = t->create_object();
+    auto obj1 = t->create_object();
+    auto obj2 = t->create_object();
+
+    auto set_list = [](LstPtr<Int> list, const std::vector<int64_t>& value_list) {
+        for (auto i : value_list) {
+            list->add(i);
+        }
+    };
+
+    set_list(obj0.get_list_ptr<Int>(int_col), {1, 2, 3});
+    set_list(obj1.get_list_ptr<Int>(int_col), {1, 3, 5, 7});
+    set_list(obj2.get_list_ptr<Int>(int_col), {100, 400, 200, 500, 300});
+
+//    auto query = t->get_subtable(int_col, 2)->column<Int>(0) > 225;
+
+    Query q = t->where();
+
+    // int
+    verify_query(test_context, t, "integers > 4", 2);
+    verify_query(test_context, t, "integers.@count > 0", 3);
+    verify_query(test_context, t, "integers.@min >= 1", 3);
+
+//    verify_query(test_context, people, "courses_taken.@max.hours_required >= 45", 2);
+//    verify_query(test_context, people, "courses_taken.@sum.hours_required <= 100", 3);
+//    verify_query(test_context, people, "courses_taken.@avg.hours_required > 41", 3);
+//
+//    // double
+//    verify_query(test_context, people, "courses_taken.@min.credits == 4.5", 2);
+//    verify_query(test_context, people, "courses_taken.@max.credits == 5.0", 2);
+//    verify_query(test_context, people, "courses_taken.@sum.credits > 8.6", 2);
+//    verify_query(test_context, people, "courses_taken.@avg.credits > 4.0", 3);
+//
+//    // float
+//    verify_query(test_context, people, "courses_taken.@min.failure_percentage < 0.10", 1);
+//    verify_query(test_context, people, "courses_taken.@max.failure_percentage > 0.40", 2);
+//    verify_query(test_context, people, "courses_taken.@sum.failure_percentage > 0.5", 3);
+//    verify_query(test_context, people, "courses_taken.@avg.failure_percentage > 0.40", 1);
+//
+//    // count and size are interchangeable but only operate on certain types
+//    // count of lists
+//    verify_query(test_context, people, "courses_taken.@count > 2", 2);
+//    verify_query(test_context, people, "courses_taken.@size > 2", 2);
+//    verify_query(test_context, people, "courses_taken.@count == 0", 1);
+//    verify_query(test_context, people, "courses_taken.@size == 0", 1);
+//
+//    // size of strings
+//    verify_query(test_context, people, "name.@count == 0", 0);
+//    verify_query(test_context, people, "name.@size == 0", 0);
+//    verify_query(test_context, people, "name.@count > 3", 3);
+//    verify_query(test_context, people, "name.@size > 3", 3);
+//
+//    // size of binary data
+//    verify_query(test_context, people, "hash.@count == 0", 1);
+//    verify_query(test_context, people, "hash.@size == 0", 1);
+//    verify_query(test_context, people, "hash.@count > 2", 2);
+//    verify_query(test_context, people, "hash.@size > 2", 2);
+//
+//    std::string message;
+//
+//    // string
+//    CHECK_THROW_ANY(verify_query(test_context, people, "courses_taken.@min.title <= 41", 2));
+//    CHECK_THROW_ANY(verify_query(test_context, people, "courses_taken.@max.title <= 41", 2));
+//    CHECK_THROW_ANY(verify_query(test_context, people, "courses_taken.@sum.title <= 41", 2));
+//    CHECK_THROW_ANY(verify_query(test_context, people, "courses_taken.@avg.title <= 41", 2));
+//
+//    // min, max, sum, avg require a target property on the linked table
+//    CHECK_THROW_ANY(verify_query(test_context, people, "courses_taken.@min <= 41", 2));
+//    CHECK_THROW_ANY(verify_query(test_context, people, "courses_taken.@max <= 41", 2));
+//    CHECK_THROW_ANY(verify_query(test_context, people, "courses_taken.@sum <= 41", 2));
+//    CHECK_THROW_ANY(verify_query(test_context, people, "courses_taken.@avg <= 41", 2));
+//
+//    // aggregate operations on a non-linklist column must throw
+//    CHECK_THROW_ANY(verify_query(test_context, people, "name.@min.hours_required <= 41", 2));
+//    CHECK_THROW_ANY(verify_query(test_context, people, "name.@max.hours_required <= 41", 2));
+//    CHECK_THROW_ANY(verify_query(test_context, people, "name.@sum.hours_required <= 41", 2));
+//    CHECK_THROW_ANY(verify_query(test_context, people, "name.@avg.hours_required <= 41", 2));
+//    CHECK_THROW_ANY_GET_MESSAGE(verify_query(test_context, people, "name.@min.hours_required <= 41", 2), message);
+//    CHECK(message.find("list") != std::string::npos);
+//    CHECK(message.find("name") != std::string::npos);
+//
+//    // size and count do not allow paths on the destination object
+//    CHECK_THROW_ANY(verify_query(test_context, people, "name.@count.hours_required <= 2", 0));
+//    CHECK_THROW_ANY(verify_query(test_context, people, "name.@size.hours_required <= 2", 0));
+//
+//    // size is only allowed on certain types
+//    CHECK_THROW_ANY(verify_query(test_context, people, "age.@size <= 2", 0));
+//    CHECK_THROW_ANY(verify_query(test_context, courses, "credits.@size == 2", 0));
+//    CHECK_THROW_ANY(verify_query(test_context, courses, "failure_percentage.@size <= 2", 0));
+}
+
 TEST(Parser_SortAndDistinctSerialisation)
 {
     Group g;

@@ -41,6 +41,7 @@ struct SubqueryExpression {
     ColKey get_dest_col_key() const;
     ConstTableRef get_dest_table() const;
     bool dest_type_is_backlink() const;
+    bool dest_type_is_list() const;
 
 
     SubqueryExpression(Query& q, const std::string& key_path_string, const std::string& variable_name,
@@ -51,6 +52,11 @@ struct SubqueryExpression {
 
     template <typename T>
     auto value_of_type_for_query() const
+    {
+        return SubqueryGetter<T>::convert(*this);
+    }
+    template <typename T>
+    auto value_of_list_type_for_query() const
     {
         return SubqueryGetter<T>::convert(*this);
     }
@@ -66,6 +72,12 @@ inline bool SubqueryExpression::dest_type_is_backlink() const
 {
     REALM_ASSERT_DEBUG(link_chain.size() > 0);
     return link_chain.back().is_backlink;
+}
+
+inline bool SubqueryExpression::dest_type_is_list() const
+{
+    REALM_ASSERT_DEBUG(link_chain.size() > 0);
+    return link_chain.back().is_list;
 }
 
 inline ColKey SubqueryExpression::get_dest_col_key() const

@@ -91,6 +91,7 @@ KeyPathElement KeyPathMapping::process_next_path(ConstTableRef table, KeyPath& k
             element.col_key = ColKey(); // unused
             element.col_type = type_LinkList;
             element.is_backlink = false;
+            element.is_list = false;
             return element;
         }
         realm_precondition(index + 2 < keypath.size(), "'@links' must be proceeded by type name and a property name");
@@ -113,6 +114,7 @@ KeyPathElement KeyPathMapping::process_next_path(ConstTableRef table, KeyPath& k
         element.col_key = info->second;
         element.col_type = type_LinkList; // backlinks should be operated on as a list
         element.is_backlink = true;
+        element.is_list = false;
         return element;
     }
 
@@ -121,14 +123,14 @@ KeyPathElement KeyPathMapping::process_next_path(ConstTableRef table, KeyPath& k
     realm_precondition(col_key != ColKey(), util::format("No property '%1' on object of type '%2'", keypath[index],
                                                          get_printable_table_name(*table)));
 
-    DataType cur_col_type = table->get_column_type(col_key);
-
     index++;
     KeyPathElement element;
     element.table = table;
     element.col_key = col_key;
-    element.col_type = cur_col_type;
+    element.col_type = table->get_column_type(col_key);
     element.is_backlink = false;
+    element.is_list = table->is_list(col_key);
+
     return element;
 }
 

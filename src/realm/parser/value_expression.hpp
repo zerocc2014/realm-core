@@ -34,6 +34,12 @@ struct ValueExpression
     bool is_null();
     template <typename RetType>
     RetType value_of_type_for_query();
+    template <typename RetType>
+    RetType value_of_list_type_for_query();
+    bool dest_type_is_list()
+    {
+        return false;
+    }
 };
 
 } // namespace parser

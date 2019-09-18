@@ -108,6 +108,15 @@ struct CollectionOperatorExpression
     {
         return CollectionOperatorGetter<T, OpType>::convert(*this);
     }
+    template <typename T>
+    auto value_of_list_type_for_query() const
+    {
+        return CollectionOperatorGetter<T, OpType>::convert(*this);
+    }
+    bool dest_type_is_list()
+    {
+        return pe.dest_type_is_list();
+    }
 };
 
 

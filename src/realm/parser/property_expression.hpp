@@ -33,6 +33,7 @@ struct PropertyExpression
     DataType get_dest_type() const;
     ColKey get_dest_col_key() const;
     ConstTableRef get_dest_table() const;
+    bool dest_type_is_list() const;
     bool dest_type_is_backlink() const;
 
     PropertyExpression(Query& q, const std::string& key_path_string, parser::KeyPathMapping& mapping);
@@ -43,6 +44,11 @@ struct PropertyExpression
     auto value_of_type_for_query() const
     {
         return this->link_chain_getter().template column<RetType>(get_dest_col_key());
+    }
+    template <typename RetType>
+    auto value_of_list_type_for_query() const
+    {
+        return this->link_chain_getter().template column<Lst<RetType>>(get_dest_col_key());
     }
 };
 
@@ -56,6 +62,12 @@ inline bool PropertyExpression::dest_type_is_backlink() const
 {
     REALM_ASSERT_DEBUG(link_chain.size() > 0);
     return link_chain.back().is_backlink;
+}
+
+inline bool PropertyExpression::dest_type_is_list() const
+{
+    REALM_ASSERT_DEBUG(link_chain.size() > 0);
+    return link_chain.back().is_list;
 }
 
 inline ColKey PropertyExpression::get_dest_col_key() const

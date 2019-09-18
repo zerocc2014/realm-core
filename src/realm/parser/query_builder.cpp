@@ -324,7 +324,6 @@ void add_link_constraint_to_query(realm::Query &query,
 template <typename A, typename B>
 void do_add_comparison_to_query(Query& query, const Predicate::Comparison& cmp, A& lhs, B& rhs, DataType type)
 {
-
     switch (type) {
         case type_Bool:
             add_bool_constraint_to_query(query, cmp.op,
@@ -347,9 +346,22 @@ void do_add_comparison_to_query(Query& query, const Predicate::Comparison& cmp, 
                                             rhs. template value_of_type_for_query<Float>());
             break;
         case type_Int:
-            add_numeric_constraint_to_query(query, cmp.op,
-                                            lhs. template value_of_type_for_query<Int>(),
-                                            rhs. template value_of_type_for_query<Int>());
+            if (lhs.dest_type_is_list()) {
+                add_numeric_constraint_to_query(query, cmp.op,
+                                                lhs. template value_of_list_type_for_query<Int>(),
+                                                rhs. template value_of_type_for_query<Int>());
+            }
+            else if (rhs.dest_type_is_list())
+            {
+                add_numeric_constraint_to_query(query, cmp.op,
+                                                lhs. template value_of_type_for_query<Int>(),
+                                                rhs. template value_of_list_type_for_query<Int>());
+            }
+            else {
+                add_numeric_constraint_to_query(query, cmp.op,
+                                                lhs. template value_of_type_for_query<Int>(),
+                                                rhs. template value_of_type_for_query<Int>());
+            }
             break;
         case type_String:
             add_string_constraint_to_query(query, cmp,
