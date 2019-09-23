@@ -53,6 +53,7 @@ class Group;
 class SortDescriptor;
 class StringIndex;
 class TableView;
+class Subexpr;
 template <class>
 class Columns;
 template <class>
@@ -113,7 +114,11 @@ public:
     bool is_nullable(ColKey col_key) const;
 
     // Whether or not the column is a list.
-    bool is_list(ColKey col_key) const;
+    bool is_list(ColKey col_key) const
+    {
+        REALM_ASSERT_DEBUG(valid_column(col_key));
+        return col_key.get_attrs().test(col_attr_List);
+    }
 
     //@{
     /// Conventience functions for inspecting the dynamic table type.
@@ -587,6 +592,8 @@ public:
     {
         return Query(*this, list);
     }
+
+    Query query(std::string q) const;
 
     //@{
     /// WARNING: The link() and backlink() methods will alter a state on the Table object and return a reference
@@ -1065,6 +1072,12 @@ public:
         return *this;
     }
 
+    LinkChain& link(std::string col_name)
+    {
+        add(m_current_table->get_column_key(col_name));
+        return *this;
+    }
+
     LinkChain& backlink(const Table& origin, ColKey origin_col_key)
     {
         auto backlink_col_key = origin.get_opposite_column(origin_col_key);
@@ -1090,6 +1103,9 @@ public:
 
         return Columns<T>(col_key, m_base_table, m_link_cols);
     }
+
+    Subexpr* column(std::string col_name);
+
     template <class T>
     Columns<T> column(const Table& origin, ColKey origin_col_key)
     {

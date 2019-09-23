@@ -399,6 +399,8 @@ public:
         return false;
     }
 
+    virtual DataType get_type() const = 0;
+
     virtual void evaluate(size_t index, ValueBase& destination) = 0;
     // This function supports SubColumnAggregate
     virtual void evaluate(ObjKey, ValueBase&)
@@ -721,6 +723,11 @@ public:
     {
     }
 
+    DataType get_type() const override
+    {
+        return ColumnTypeTraits<T>::id;
+    }
+
 #define RLM_U2(t, o) using Overloads<T, t>::operator o;
 #define RLM_U(o)                                                                                                     \
     RLM_U2(int, o)                                                                                                   \
@@ -734,6 +741,11 @@ public:
 // Subexpr2<Link> only provides equality comparisons. Their implementations can be found later in this file.
 template <>
 class Subexpr2<Link> : public Subexpr {
+public:
+    DataType get_type() const override
+    {
+        return type_Link;
+    }
 };
 
 template <>
@@ -751,6 +763,10 @@ public:
     Query contains(const Subexpr2<StringData>& col, bool case_sensitive = true);
     Query like(StringData sd, bool case_sensitive = true);
     Query like(const Subexpr2<StringData>& col, bool case_sensitive = true);
+    DataType get_type() const override
+    {
+        return type_String;
+    }
 };
 
 template <>
@@ -768,6 +784,10 @@ public:
     Query contains(const Subexpr2<BinaryData>& col, bool case_sensitive = true);
     Query like(BinaryData sd, bool case_sensitive = true);
     Query like(const Subexpr2<BinaryData>& col, bool case_sensitive = true);
+    DataType get_type() const override
+    {
+        return type_Binary;
+    }
 };
 
 
@@ -1149,6 +1169,8 @@ struct FalseExpression : Expression {
 template <class T>
 class Value : public ValueBase, public Subexpr2<T> {
 public:
+    using Subexpr2<T>::get_type;
+
     Value()
     {
         init(false, 1, T());
@@ -2695,9 +2717,9 @@ public:
 
     void get_lists(size_t index, Value<ref_type>& destination, size_t nb_elements);
 
-    std::string description(util::serializer::SerialisationState&) const
+    std::string description(util::serializer::SerialisationState& state) const
     {
-        throw SerialisationError("Serialisation of query expressions involving subtables is not yet supported.");
+        return state.describe_columns(m_link_map, m_column_key);
     }
 
     bool links_exist() const
@@ -2781,9 +2803,9 @@ public:
         destination.import(v);
     }
 
-    virtual std::string description(util::serializer::SerialisationState&) const override
+    virtual std::string description(util::serializer::SerialisationState& state) const override
     {
-        throw SerialisationError("Serialisation of subtable expressions is not yet supported.");
+        return ColumnListBase::description(state);
     }
 
     SizeOperator<SizeOfList> size();
@@ -3260,6 +3282,11 @@ public:
     void collect_dependencies(std::vector<TableKey>& tables) const override
     {
         m_link_map.collect_dependencies(tables);
+    }
+
+    DataType get_type() const override
+    {
+        return ColumnTypeTraits<T>::id;
     }
 
     void evaluate(size_t, ValueBase&) override

@@ -49,6 +49,7 @@ class BasicArrayNull;
 struct Link;
 template <class>
 class Lst;
+struct SizeOfList;
 
 template <class T>
 struct ColumnTypeTraits;
@@ -120,7 +121,23 @@ struct ColumnTypeTraits<ObjKey> {
 
 template <>
 struct ColumnTypeTraits<Link> {
+    static const DataType id = type_Link;
     static const ColumnType column_id = col_type_Link;
+};
+
+template <>
+struct ColumnTypeTraits<int> {
+    static const DataType id = type_Int;
+};
+
+template <>
+struct ColumnTypeTraits<null> {
+    static const DataType id = type_Int;
+};
+
+template <>
+struct ColumnTypeTraits<SizeOfList> {
+    static const DataType id = type_Int;
 };
 
 template <>
@@ -189,6 +206,7 @@ struct ColumnTypeTraits<BinaryData> {
 
 template <class T>
 struct ColumnTypeTraits<Lst<T>> {
+    static const DataType id = ColumnTypeTraits<T>::id;
     static const ColumnType column_id = ColumnTypeTraits<T>::column_id;
 };
 

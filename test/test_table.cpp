@@ -4915,4 +4915,52 @@ TEST(Table_MultipleObjs) {
     CHECK_EQUAL(list_2.get(0), obj_key);
 }
 
+ONLY(Table_Jed)
+{
+    Group g;
+    auto dog = g.add_table("dog");
+    auto col_dog_name = dog->add_column(type_String, "name");
+
+    auto person = g.add_table("person");
+    auto col_person_name = person->add_column(type_String, "name");
+    auto col_person_age = person->add_column(type_Int, "age");
+    auto col_person_books = person->add_column_list(type_String, "books");
+    auto col_person_pet = person->add_column_link(type_LinkList, "pet", *dog);
+
+    auto fido = dog->create_object().set(col_dog_name, "Fido");
+    auto pluto = dog->create_object().set(col_dog_name, "Pluto");
+    auto vaks = dog->create_object().set(col_dog_name, "Vaks");
+    auto lady = dog->create_object().set(col_dog_name, "Lady");
+
+    person->create_object()
+            .set(col_person_name, "Frank")
+            .set(col_person_age, 25);
+    person->create_object()
+            .set(col_person_name, "Bill")
+            .set(col_person_age, 30)
+            .get_linklist(col_person_pet).add(fido.get_key());
+    person->create_object()
+            .set(col_person_name, "Ken")
+            .set(col_person_age, 35);
+    person->create_object()
+            .set(col_person_name, "Paul")
+            .set(col_person_age, 40)
+            .get_linklist(col_person_pet).add(pluto.get_key());
+    auto ll = person->create_object()
+            .set(col_person_name, "David")
+            .set(col_person_age, 40)
+            .get_linklist(col_person_pet);
+
+
+    for (auto o : *person) {
+        auto list = o.get_list<String>(col_person_books);
+    }
+    ll.add(vaks.get_key());
+    ll.add(lady.get_key());
+
+    auto q2 = person->query("(age < 30 || age == 40) and pet.name == \"Lady\"");
+    std::cout << q2.get_description() << std::endl;
+    CHECK_EQUAL(q2.count(), 1);
+}
+
 #endif // TEST_TABLE

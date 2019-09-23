@@ -102,6 +102,9 @@ endif()
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 list(APPEND PLATFORM_LIBRARIES Threads::Threads)
+find_package(BISON)
+find_package(FLEX)
+
 
 # Options (passed to CMake)
 option(REALM_ENABLE_ASSERTIONS "Enable assertions in release mode." OFF)

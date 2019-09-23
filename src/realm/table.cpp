@@ -1466,13 +1466,6 @@ bool Table::is_nullable(ColKey col_key) const
     return col_key.get_attrs().test(col_attr_Nullable);
 }
 
-bool Table::is_list(ColKey col_key) const
-{
-    REALM_ASSERT_DEBUG(valid_column(col_key));
-    return col_key.get_attrs().test(col_attr_List);
-}
-
-
 ref_type Table::create_empty_table(Allocator& alloc, TableKey key)
 {
     Array top(alloc);
