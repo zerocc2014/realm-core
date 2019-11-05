@@ -12,7 +12,10 @@
 -----------
 
 ### Internals
-* None.
+* Upgrade OpenSSL for Android to version 1.1.1b.
+* Upgrade the NDK to version 18.
+* When using core as a CMake package, the target name changed to RealmCore::Core.
+* Removed support for ARMv5 and MIPS from Android. This is a consequence of the new NDK being used.
 
 ----------------------------------------------
 
@@ -157,7 +160,7 @@
 * None.
 
 ### Breaking changes
-* None.
+* None
 
 -----------
 
