@@ -4915,7 +4915,7 @@ TEST(Table_MultipleObjs) {
     CHECK_EQUAL(list_2.get(0), obj_key);
 }
 
-ONLY(Table_Jed)
+TEST(Table_SimpleParser)
 {
     Group g;
     auto dog = g.add_table("dog");

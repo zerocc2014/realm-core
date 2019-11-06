@@ -31,6 +31,7 @@
 %define api.token.prefix {TOK_}
 %token
   END  0  "end of file"
+  TRUEPREDICATE "true"
   ASSIGN  ":="
   EQUALS  "=="
   LESS    "<"
@@ -162,8 +163,8 @@ pred:
 | pred "||" pred    {
                         $$ = $1 || $3;
                     }
-| "(" pred ")"      { $$ = $2; }
-
+| "(" pred ")"      { $$ = std::move($2); }
+| TRUEPREDICATE     { $$ = drv.link_chain.get_base_table()->where(); }
 path:
   %empty            {}
 | path path_elem    {}  
@@ -175,5 +176,7 @@ path_elem:
 void
 yy::parser::error (const location_type& l, const std::string& m)
 {
-  std::cerr << l << ": " << m << '\n';
+    std::ostringstream ostr;
+    ostr << l << ": " << m;
+    drv.error(ostr.str());
 }

@@ -28,6 +28,13 @@ public:
     // Handling the scanner.
     void scan_begin();
     void scan_end();
+
+    void error(const std::string& err)
+    {
+        error_string = err;
+        parse_error = true;
+    }
+
     // Whether to generate scanner debug traces.
     bool trace_scanning;
     // The token's location used by the scanner.
@@ -35,7 +42,9 @@ public:
 private:
     // The string being parsed.
     std::string parse_string;
+    std::string error_string;
     void* scan_buffer = nullptr;
+    bool parse_error = false;
 };
 }
 #endif // ! DRIVER_HH

@@ -22,6 +22,9 @@ int ParserDriver::parse(const std::string& str)
     parse.set_debug_level(trace_parsing);
     int res = parse();
     scan_end();
+    if (parse_error) {
+        throw std::runtime_error(error_string);
+    }
     return res;
 }
 
