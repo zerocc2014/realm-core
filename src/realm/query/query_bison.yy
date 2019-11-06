@@ -32,6 +32,7 @@
 %token
   END  0  "end of file"
   TRUEPREDICATE "true"
+  FALSEPREDICATE "false"
   ASSIGN  ":="
   EQUALS  "=="
   LESS    "<"
@@ -46,6 +47,7 @@
   SLASH   "/"
   LPAREN  "("
   RPAREN  ")"
+  NOT     "!"
   DOT     "."
 ;
 
@@ -55,11 +57,12 @@
 %token <double> FLOAT "float"
 %type  <std::unique_ptr<realm::Subexpr>> exp
 %type  <realm::Query> pred
-%type path
-%type path_elem
+%type  <realm::LinkChain> path
+%type  <std::string> path_elem
 
 %printer { util::serializer::SerialisationState state; yyo << $$->description(state); } <std::unique_ptr<realm::Subexpr>>;
 %printer { yyo << $$.get_description(); } <realm::Query>;
+%printer { yyo << "LinkChain"; } <realm::LinkChain>;
 %printer { yyo << $$; } <*>;
 %printer { yyo << "<>"; } <>;
 
@@ -73,12 +76,13 @@ unit: pred  {
 %left "&&";
 %left "+" "-";
 %left "*" "/";
+%right "!";
 
 exp:
   NUMBER            { $$.reset(new realm::Value<int64_t>($1)); }
 | STRING            { $$.reset(new ConstantStringValue($1)); }
 | FLOAT             { $$.reset(new realm::Value<double>($1)); }
-| path IDENTIFIER   { $$.reset(drv.link_chain.column($2)); }
+| path IDENTIFIER   { $$.reset($1.column($2)); }
 | "(" exp ")"       { $$ = std::move($2); }
 
 pred:
@@ -164,13 +168,29 @@ pred:
                         $$ = $1 || $3;
                     }
 | "(" pred ")"      { $$ = std::move($2); }
-| TRUEPREDICATE     { $$ = drv.link_chain.get_base_table()->where(); }
+| "true"            {
+                        Query q = drv.base_table->where();
+                        q.and_query(std::unique_ptr<realm::Expression>(new TrueExpression));
+                        $$ = std::move(q);
+                    }
+| "false"           {
+                        Query q = drv.base_table->where();
+                        q.and_query(std::unique_ptr<realm::Expression>(new FalseExpression));
+                        $$ = std::move(q);
+                    }
+| "!" pred          {
+                        Query q = drv.base_table->where();
+                        q.Not();
+                        q.and_query($2);
+                        $$ = std::move(q);
+                    }
+
 path:
-  %empty            {}
-| path path_elem    {}  
+  %empty            { $$ = LinkChain(drv.base_table); }
+| path path_elem    { $1.link($2); $$ = $1; }  
 
 path_elem:
-  IDENTIFIER "."    { drv.link_chain.link($1); }
+  IDENTIFIER "."    { $$ = $1; }
 %%
 
 void

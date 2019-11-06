@@ -54,8 +54,10 @@ blank   [ \t\r]
 "("        return yy::parser::make_LPAREN (loc);
 ")"        return yy::parser::make_RPAREN (loc);
 ":="       return yy::parser::make_ASSIGN (loc);
+"!"        return yy::parser::make_NOT    (loc);
 "."        return yy::parser::make_DOT    (loc);
 "TRUEPREDICATE" return yy::parser::make_TRUEPREDICATE (loc); 
+"FALSEPREDICATE" return yy::parser::make_FALSEPREDICATE (loc); 
 {int}      return make_NUMBER (yytext, loc);
 {float}    return make_FLOAT (yytext, loc);
 {string}   return make_STRING (yytext, loc);

@@ -3,15 +3,6 @@
 
 using namespace realm;
 
-ParserDriver::ParserDriver(const Table* base_table)
-    : link_chain(base_table)
-    , trace_parsing(false)
-    , trace_scanning(false)
-{
-    variables["one"] = 1;
-    variables["two"] = 2;
-}
-
 int ParserDriver::parse(const std::string& str)
 {
     parse_string = str;
@@ -31,6 +22,13 @@ int ParserDriver::parse(const std::string& str)
 Subexpr* LinkChain::column(std::string col)
 {
     auto col_key = m_current_table->get_column_key(col);
+    if (!col_key) {
+        std::string err = m_current_table->get_name();
+        err += " has no property: ";
+        err += col;
+        throw std::runtime_error(err);
+    }
+
     if (m_current_table->is_list(col_key)) {
         switch (col_key.get_type()) {
         case col_type_Int:
