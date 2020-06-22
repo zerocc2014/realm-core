@@ -167,33 +167,33 @@ if (REALM_BUILD_DOGLESS)
 endif()
 
 install(TARGETS ${targets_to_install} EXPORT Sync
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT runtime
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT runtime
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT devel)
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT realm-sync
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT realm-sync
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT realm-sync)
 
 install(FILES ${SYNC_INSTALL_HEADERS}
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/realm/sync
-        COMPONENT devel)
+        COMPONENT realm-sync)
 
 install(FILES ${IMPL_INSTALL_HEADERS}
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/realm/impl
-        COMPONENT devel)
+        COMPONENT realm-sync)
 
 install(FILES ${SYNC_INSTALL_HEADERS}
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/realm/sync
-        COMPONENT devel)
+        COMPONENT realm-sync)
 
 install(FILES ${UTIL_INSTALL_HEADERS}
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/realm/util
-        COMPONENT devel)
+        COMPONENT realm-sync)
 
 install(FILES ${UTIL_METERED_INSTALL_HEADERS}
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/realm/util/metered
-        COMPONENT devel)
+        COMPONENT realm-sync)
 
 install(FILES ../../external/mpark/variant.hpp
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/external/mpark
-        COMPONENT devel)
+        COMPONENT realm-sync)
 
 if(REALM_BUILD_COMMANDLINE_TOOLS)
     add_executable(SyncWorker server_command.cpp)
@@ -269,5 +269,6 @@ if(REALM_BUILD_COMMANDLINE_TOOLS)
             ServerIndexCommand
         DESTINATION
             ${CMAKE_INSTALL_BINDIR}
+        COMPONENT realm-sync
     )
 endif()

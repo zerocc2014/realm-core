@@ -1,8 +1,4 @@
-if(WIN32)
-    cmake_minimum_required(VERSION 3.12)
-else()
-    cmake_minimum_required(VERSION 3.15)
-endif()
+cmake_minimum_required(VERSION 3.15)
 
 set(CMAKE_BUILD_TYPE Debug CACHE STRING "")
 project(RealmCore)
@@ -298,23 +294,34 @@ if(NOT REALM_BUILD_LIB_ONLY AND NOT REALM_NO_TESTS)
 endif()
 
 # Install the licence and changelog files
-install(FILES LICENSE CHANGELOG.md DESTINATION "doc/realm" COMPONENT devel)
+install(FILES LICENSE CHANGELOG.md DESTINATION "doc/realm" COMPONENT realm-core)
 
 # Make the project importable from the build directory
-export(TARGETS Storage QueryParser NAMESPACE RealmCore:: FILE RealmCoreTargets.cmake)
+set(REALM_EXPORTED_TARGETS Storage;QueryParser)
+if(REALM_ENABLE_SYNC)
+    set(REALM_EXPORTED_TARGETS ${REALM_EXPORTED_TARGETS};Sync;SyncServer)
+endif()
+export(TARGETS Storage QueryParser NAMESPACE Realm:: FILE RealmTargets.cmake)
 configure_file(${CMAKE_CURRENT_LIST_DIR}/tools/cmake/RealmCoreConfig.cmake.in ${CMAKE_CURRENT_BINARY_DIR}/RealmCoreConfig.cmake @ONLY)
 
 # Make the project importable from the install directory
-install(EXPORT realm
+install(EXPORT Core
         NAMESPACE RealmCore::
         FILE RealmCoreTargets.cmake
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/RealmCore
-        COMPONENT devel
+        COMPONENT realm-core
+)
+
+install(EXPORT Sync
+        NAMESPACE Realm::
+        FILE realm-sync-config.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/realm
+        COMPONENT realm-sync
 )
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/RealmCoreConfig.cmake 
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/RealmCore 
-        COMPONENT devel
+        COMPONENT realm-core
 )
 
 # CPack
@@ -322,7 +329,8 @@ set(CPACK_GENERATOR "TGZ")
 set(CPACK_PACKAGE_NAME "realm-core-${CMAKE_BUILD_TYPE}")
 set(CPACK_PACKAGE_VERSION ${REALM_VERSION})
 set(CPACK_ARCHIVE_COMPONENT_INSTALL ON)
+set(CPACK_ARCHIVE_REALM-CORE_FILE_NAME "realm-core-${CMAKE_BUILD_TYPE}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}-devel")
+set(CPACK_ARCHIVE_REALM-SYNC_FILE_NAME "realm-sync-${CMAKE_BUILD_TYPE}-${CPACK_PACKAGE_VERSION}-${CPACK_SYSTEM_NAME}-devel")
 include(CPack)
-cpack_add_component(runtime DEPENDS runtime)
-cpack_add_component(devel DEPENDS devel)
-
+cpack_add_component(realm-core)
+cpack_add_component(realm-sync)

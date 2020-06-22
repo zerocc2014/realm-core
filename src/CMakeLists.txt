@@ -7,4 +7,4 @@ endif()
 
 install(FILES realm.hpp
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
-        COMPONENT devel)
+        COMPONENT realm-core)
