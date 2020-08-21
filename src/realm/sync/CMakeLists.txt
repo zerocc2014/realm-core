@@ -220,11 +220,18 @@ if(REALM_BUILD_COMMANDLINE_TOOLS)
                           DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
 		  target_link_libraries(DumpCommand Sync Storage)
 
-    add_executable(StatCommand stat_command.cpp)
-    set_target_properties(StatCommand PROPERTIES
-                          OUTPUT_NAME "realm-stat"
+    # FIXME (RCORE-331) This file is broken in the monorepo.
+    # add_executable(StatCommand stat_command.cpp)
+    # set_target_properties(StatCommand PROPERTIES
+    #                      OUTPUT_NAME "realm-stat"
+    #                      DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
+    # target_link_libraries(StatCommand Sync Storage)
+
+    add_executable(ApplyToStateCommand apply_to_state_command.cpp)
+    set_target_properties(ApplyToStateCommand PROPERTIES
+                          OUTPUT_NAME "realm-apply-to-state"
                           DEBUG_POSTFIX "${CMAKE_DEBUG_POSTFIX}")
-    target_link_libraries(StatCommand Sync Storage)
+    target_link_libraries(ApplyToStateCommand Sync Storage cxxopts json)
 
     # FIXME: Port realm-hist to new instruction format
     # add_executable(HistCommand sync/hist_command.cpp)
@@ -263,7 +270,7 @@ if(REALM_BUILD_COMMANDLINE_TOOLS)
             VacuumCommand
             EncryptionTransformer
             DumpCommand
-            StatCommand
+            # StatCommand
             # HistCommand
             VerifyServerFileCommand
             ServerIndexCommand
