@@ -779,6 +779,7 @@ void out_mixed(std::ostream& out, const Mixed& val)
         case type_ObjectId:
             out << "\"";
             out << val.get<ObjectId>();
+            out << "\"";
             break;
         case type_TypedLink:
             out << "\"";
