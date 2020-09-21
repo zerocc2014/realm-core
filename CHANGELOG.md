@@ -22,6 +22,7 @@
 ### Enhancements
 * Features added by release v6.0.26:
   * Added ability to replace last sort descriptor on DescriptorOrdering in addition to append/prepending to it [#3884]
+* Added Apple Silicon build
 
 ### Fixed
 * Issues fixed by release v6.0.26:
